@@ -669,52 +669,9 @@
 
 
         // --- LOCAL STORAGE DATA HANDLING ---
-        function createDummyNotes() {
-            const dummyNotes = [
-                { title: "# Meeting Notes - Project Phoenix", content: "Discussed Q4 roadmap. Key takeaways:\n- Finalize UI/UX mockups by next Friday.\n- John to handle backend integration.\n- **Marketing push** scheduled for Nov 15th." },
-                { title: "## Grocery List", content: "- [x] Milk\n- [x] Eggs\n- [ ] Bread\n- [ ] Chicken breast\n- [ ] Avocado" },
-                { title: "### Brainstorming for new app", content: "*Idea 1:* A social network for gardeners.\n*Idea 2:* A hyper-local weather app.\n*Idea 3:* An AI-powered recipe generator based on ingredients you have." },
-                { title: "Recipe: Simple Pasta Dough", content: "#### Ingredients:\n- 2 cups all-purpose flour\n- 3 large eggs\n- 1 tsp olive oil\n- Pinch of salt\n\n#### Instructions:\n1. Mix flour and salt.\n2. Make a well, crack eggs in.\n3. Knead for 10 minutes until smooth." },
-                { title: "Book Recommendations", content: "To Read:\n1. 'Project Hail Mary' by Andy Weir\n2. 'Klara and the Sun' by Kazuo Ishiguro\n3. 'Dune' by Frank Herbert (re-read)" },
-                { title: "Vacation Ideas 2026", content: "Possible destinations:\n- Japan (Tokyo, Kyoto)\n- Italy (Amalfi Coast)\n- New Zealand (South Island road trip)" },
-                { title: "Learning Goals Q4", content: "- Master advanced `CSS Grid`\n- Learn basics of **Python** for data analysis\n- Complete the React Native course" },
-                { title: "Workout Plan - Week 43", content: "**Monday:** Chest & Triceps\n**Wednesday:** Back & Biceps\n**Friday:** Legs & Shoulders\n\n> Focus on progressive overload." },
-                { title: "Favorite Quotes", content: "> 'The only way to do great work is to love what you do.' - Steve Jobs\n\n> 'Strive not to be a success, but rather to be of value.' - Albert Einstein" },
-                { title: "Home Improvement To-Do", content: "- [ ] Fix leaky faucet in kitchen\n- [ ] Repaint the guest bedroom (light grey)\n- [x] Organize the garage" },
-                { title: "Gift Ideas for Sarah", content: "- A nice fountain pen\n- That book on architecture she wanted\n- Subscription to a coffee delivery service" },
-                { title: "Draft for email to client", content: "Subject: Update on Project Phoenix\n\nHi team,\nJust a quick update on our progress this week..." },
-                { title: "Car Maintenance Log", content: "Oct 15, 2025: Oil change and tire rotation.\nMileage: 45,210 km." },
-                { title: "Interesting Articles", content: "- The psychology of color in marketing\n- How to build a second brain\n- The rise of generative AI" },
-                { title: "Sourdough Bread Recipe for 3 People", content: "Ingredients for one loaf (feeds 3-4):\n- 75g active sourdough starter\n- 250g bread flour\n- 50g whole wheat flour\n- 225g water\n- 6g salt" },
-                { title: "Notes on 'Atomic Habits'", content: "Key concept: **1% better every day**. The four laws of behavior change: Make it obvious, attractive, easy, and satisfying." },
-                { title: "Concert Wishlist", content: "- The National\n- Tame Impala\n- Bon Iver" },
-                { title: "Appliance Manual Notes", content: "Dishwasher model: `DWX800`\nFilter cleaning: Monthly, counter-clockwise turn.\nRinse aid: Use setting 4." },
-                { title: "Gardening Log", content: "Planted tomatoes and basil on Oct 10. Water every 2 days. Seeing good growth. Watch for pests." },
-                { title: "Javascript Snippets", content: "Debounce function:\n```javascript\nconst debounce = (fn, delay) => { ... }\n```\nUseful for search inputs and resize events." },
-                { title: "Movie Watchlist", content: "- Oppenheimer\n- Past Lives\n- Anatomy of a Fall\n- The Holdovers" },
-                { title: "Podcast Ideas", content: "## Episode 1: The history of note-taking.\n## Episode 2: Analog vs. Digital productivity systems.\n## Episode 3: Interview with a memory champion." },
-                { title: "Client Contact Info", content: "John Doe - Acme Corp\nPhone: 555-1234\nEmail: john.doe@acme.com" },
-                { title: "Emergency Contacts", content: "Jane Doe (Spouse): 555-5678\nLocal Police: 000" },
-                { title: "Packing List for Camping", content: "- [ ] Tent\n- [ ] Sleeping bag\n- [ ] Headlamp\n- [ ] Stove & fuel\n- [x] Water filter\n- [x] First-aid kit" }
-            ];
-
-            const now = Date.now();
-            return dummyNotes.map((note, index) => ({
-                id: crypto.randomUUID(),
-                content: `${note.content}`, // Changed to not duplicate title
-                createdAt: now - (index * 1000 * 60 * 60 * 24), // Stagger creation dates
-                updatedAt: now - (index * 1000 * 60 * 5) // Stagger update times
-            }));
-        }
-
         function loadNotes() {
             const notesJSON = localStorage.getItem('notes-app-data');
             let notes = notesJSON ? JSON.parse(notesJSON) : [];
-
-            if (notes.length === 0) {
-                notes = createDummyNotes();
-                localStorage.setItem('notes-app-data', JSON.stringify(notes));
-            }
 
             notesCache = notes;
             
@@ -1042,6 +999,7 @@
     </script>
 </body>
 </html>
+
 
 
 
