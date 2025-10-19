@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://unpkg.com/turndown/dist/turndown.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom scrollbar for a more subtle look */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+        
+        #note-editor {
+            resize: none;
+            border: none;
+            outline: none;
+            box-shadow: none;
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            font-size: 1rem; /* 16px to match prose */
+            line-height: 1.7;
+        }
+        #note-editor:focus {
+            border: none;
+            outline: none;
+            box-shadow: none;
+        }
+        
+        /* Prose styles for rendered markdown */
+        #note-editor h1, #note-editor h2, #note-editor h3 {
+            font-weight: 400; /* Regular */
+            line-height: 1.2;
+            margin-bottom: 0.5em;
+            margin-top: 1em;
+        }
+        #note-editor h1 { font-size: 2.25em; }
+        #note-editor h2 { font-size: 1.75em; }
+        #note-editor h3 { font-size: 1.25em; }
+        #note-editor p { margin-bottom: 1em; }
+        #note-editor ul, #note-editor ol { margin-left: 1.5rem; margin-bottom: 1em; }
+        #note-editor ul { list-style-type: disc; }
+        #note-editor ol { list-style-type: decimal; }
+        #note-editor li > ul, #note-editor li > ol { margin-bottom: 0; }
+        #note-editor strong { font-weight: 400; } /* Regular */
+        #note-editor em { font-style: italic; }
+        #note-editor code { 
+            background-color: #f1f5f9;
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        #note-editor pre {
+             background-color: #f1f5f9;
+             padding: 1em;
+             border-radius: 8px;
+             overflow-x: auto;
+             margin-bottom: 1em;
+        }
+        #note-editor pre code { padding: 0; background: none; }
+        #note-editor blockquote {
+            border-left: 3px solid #d1d5db;
+            padding-left: 1rem;
+            color: #64748b;
+            font-style: italic;
+            margin-bottom: 1em;
+        }
+        #note-editor hr {
+            border-top: 1px solid #e2e8f0;
+            margin: 2em 0;
+        }
+        #note-editor ul li.task-list-item {
+            list-style-type: none;
+            display: flex;
+            align-items: center;
+        }
+        #note-editor input[type="checkbox"] {
+            margin-right: 0.5em;
+            width: 1.25em;
+            height: 1.25em;
+            cursor: pointer;
+        }
+
+        .editor-hidden #editor-container {
+            display: none;
+        }
+        .editor-visible #placeholder-container {
+            display: none;
+        }
+        [data-note-id] {
+            transition: background-color 0.2s ease-in-out;
+        }
+        .ai-button {
+            transition: all 0.2s ease-in-out;
+        }
+        .ai-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        #summary-modal, #delete-modal, #ai-search-modal, #shortcuts-modal, #followup-modal {
+            transition: opacity 0.3s ease;
+        }
+        input[type="search"]::-webkit-search-cancel-button {
+            -webkit-appearance: none;
+            height: 1.25rem;
+            width: 1.25rem;
+            background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='feather feather-x-circle'><circle cx='12' cy='12' r='10'></circle><line x1='15' y1='9' x2='9' y2='15'></line><line x1='9' y1='9' x2='15' y2='15'></line></svg>");
+            background-repeat: no-repeat;
+            cursor: pointer;
+            opacity: 0.6;
+        }
+         input[type="search"]::-webkit-search-cancel-button:hover {
+            opacity: 1;
+         }
+         
+        #slash-menu {
+            transition: opacity 0.1s ease-in-out;
+            font-family: 'Inter', sans-serif;
+        }
+
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 h-full overflow-hidden">
+    <div id="app" class="flex h-full">
+        <!-- Sidebar -->
+        <aside class="bg-white/80 backdrop-blur-sm border-r border-slate-200 w-full md:w-1/3 lg:w-1/4 xl:w-1/5 flex flex-col">
+            <div class="p-4 border-b border-slate-200">
+                <div class="flex items-center justify-between mb-3">
+                    <h1 class="text-xl font-normal text-slate-900">Notes</h1>
+                    <button id="new-note-btn" class="p-2 rounded-lg hover:bg-slate-200 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                    </button>
+                </div>
+                 <div class="relative">
+                    <input type="search" id="search-box" placeholder="Search notes..." class="w-full pl-10 pr-10 py-2 rounded-lg bg-slate-100 border border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search text-slate-400"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                    </div>
+                    <button id="ai-search-btn" title="AI Smart Search" class="absolute inset-y-0 right-0 flex items-center pr-3 group">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot text-slate-400 group-hover:text-blue-500 transition-colors"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="note-list" class="flex-1 overflow-y-auto custom-scrollbar p-2">
+                <!-- Note items will be dynamically inserted here -->
+            </div>
+             <div class="p-2 border-t border-slate-200">
+                <button id="shortcuts-btn" class="w-full text-left text-sm text-slate-500 p-2 rounded-lg hover:bg-slate-100 flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-help-circle"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                    <span>Shortcuts & Help</span>
+                    <span class="flex-1 text-right text-xs text-slate-400">⌘ /</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="flex-1 flex flex-col p-4 md:p-6 lg:p-8 editor-hidden">
+            <!-- Placeholder for when no note is selected -->
+            <div id="placeholder-container" class="flex-1 flex flex-col items-center justify-center text-center text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-notebook-pen mb-4 text-slate-400"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4"/><path d="M2 10h4"/><path d="M2 14h4"/><path d="M2 18h4"/><path d="M18.4 2.6a2.17 2.17 0 0 1 3 3L16 11l-4 1 1-4Z"/></svg>
+                <h2 class="text-2xl font-normal mb-2">Select a note to get started</h2>
+                <p>Or create a new note to capture your thoughts.</p>
+            </div>
+
+            <!-- Editor -->
+            <div id="editor-container" class="flex-1 flex flex-col h-full relative">
+                 <div class="mb-4">
+                    <div class="flex items-center justify-between mb-3 h-[32px]">
+                        <h2 id="note-title" class="text-xl font-normal text-slate-900 break-words"></h2>
+                    </div>
+                    <div class="flex items-center justify-between border rounded-lg p-1 bg-slate-50">
+                        <div class="flex items-center">
+                             <!-- AI Icon Buttons -->
+                             <button id="summarize-btn" title="Summarize Note" class="ai-button p-2 rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-rows-3"><path d="M3 3h18"/><path d="M3 9h18"/><path d="M3 15h18"/><path d="M3 21h18"/></svg>
+                             </button>
+                             <button id="continue-btn" title="Continue Writing" class="ai-button p-2 rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pen-square"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                             </button>
+                             <button id="brainstorm-btn" title="Brainstorm Ideas" class="ai-button p-2 rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-brain"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.98-3.34 2.5 2.5 0 0 1 .46-4.11V4.5A2.5 2.5 0 0 1 7.5 2h2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.98-3.34 2.5 2.5 0 0 0-.46-4.11V4.5A2.5 2.5 0 0 0 16.5 2h-2Z"/></svg>
+                             </button>
+                             <button id="create-followup-btn" title="Create Follow-up" class="ai-button p-2 rounded-lg text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                             </button>
+                        </div>
+                        <div class="flex items-center">
+                            <div id="ai-loader" class="hidden h-5 w-5 mr-2">
+                                <svg class="spinner w-full h-full text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                             </div>
+                             <button id="delete-note-btn" title="Delete Note" class="flex-shrink-0 p-2 rounded-lg text-slate-400 hover:bg-red-100 hover:text-red-600 transition-colors">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="m8 6 4-4 4 4"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                 </div>
+                <div class="flex-1 h-full overflow-y-auto custom-scrollbar">
+                    <div id="note-editor" contenteditable="true" class="bg-transparent h-full" placeholder="Start writing..."></div>
+                </div>
+                
+                 <!-- Slash Command Menu -->
+                <div id="slash-menu" class="absolute bg-white rounded-lg shadow-xl border border-slate-200 w-64 hidden opacity-0 z-10">
+                    <!-- Menu items will be dynamically generated -->
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- AI Search Result Modal -->
+    <div id="ai-search-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div id="ai-search-modal-content" class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-2xl transform scale-95 transition-transform">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-2xl font-normal text-slate-800">✨ Smart Search Result</h3>
+                <button id="close-ai-search-btn" class="p-2 rounded-full hover:bg-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div id="ai-search-text" class="text-slate-600 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+        </div>
+    </div>
+
+
+    <!-- Summary Modal -->
+    <div id="summary-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div id="summary-modal-content" class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-2xl transform scale-95 transition-transform">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-2xl font-normal text-slate-800">✨ Note Summary</h3>
+                <button id="close-summary-btn" class="p-2 rounded-full hover:bg-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div id="summary-text" class="text-slate-600 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2"></div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div id="delete-modal-content" class="bg-white rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-md transform scale-95 transition-transform">
+            <h3 class="text-xl font-normal text-slate-800 mb-2">Delete Note</h3>
+            <p class="text-slate-600 mb-6">Are you sure you want to permanently delete this note? This action cannot be undone.</p>
+            <div class="flex justify-end space-x-3">
+                <button id="cancel-delete-btn" class="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 font-normal transition-colors">Cancel</button>
+                <button id="confirm-delete-btn" class="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 font-normal transition-colors">Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Follow-up Modal -->
+    <div id="followup-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div id="followup-modal-content" class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl transform scale-95 transition-transform flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-normal text-slate-800">✨ Draft Follow-up Email</h3>
+                <button id="close-followup-btn" class="p-2 rounded-full hover:bg-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div class="bg-slate-50 p-4 rounded-lg max-h-[60vh] overflow-y-auto custom-scrollbar mb-6">
+                <pre id="followup-text" class="text-slate-700 whitespace-pre-wrap font-sans"></pre>
+            </div>
+            <button id="copy-followup-btn" class="self-end px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 font-normal transition-colors flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <span>Copy to Clipboard</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Shortcuts Modal -->
+    <div id="shortcuts-modal" class="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0">
+        <div id="shortcuts-modal-content" class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-2xl transform scale-95 transition-transform">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-xl font-normal text-slate-800">Help & Shortcuts</h3>
+                <button id="close-shortcuts-btn" class="p-2 rounded-full hover:bg-slate-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <h4 class="font-normal text-slate-700 mb-2">Slash Commands</h4>
+                    <p class="text-slate-600">On a new line, type <code class="font-mono text-sm bg-slate-100 rounded px-1 py-0.5">/</code> to bring up a menu of formatting options. Continue typing to filter the list and press <code class="font-mono text-sm bg-slate-100 rounded px-1 py-0.5">Enter</code> to apply.</p>
+                </div>
+                 <div>
+                    <h4 class="font-normal text-slate-700 mb-2">Global Shortcuts</h4>
+                     <div class="grid grid-cols-2 gap-x-8 gap-y-3 text-slate-600">
+                        <div><span>New Note</span></div><div class="font-mono text-sm bg-slate-100 rounded px-2 py-1 justify-self-start">⌘⌥N</div>
+                        <div><span>Search Notes</span></div><div class="font-mono text-sm bg-slate-100 rounded px-2 py-1 justify-self-start">⌘K</div>
+                        <div><span>Toggle Sidebar</span></div><div class="font-mono text-sm bg-slate-100 rounded px-2 py-1 justify-self-start">⌘\</div>
+                    </div>
+                 </div>
+                 <div>
+                    <h4 class="font-normal text-slate-700 mb-2">Text Formatting</h4>
+                     <div class="grid grid-cols-2 gap-x-8 gap-y-3 text-slate-600">
+                        <div><span>Bold</span></div><div class="font-mono text-sm bg-slate-100 rounded px-2 py-1 justify-self-start">⌘B</div>
+                        <div><span>Italic</span></div><div class="font-mono text-sm bg-slate-100 rounded px-2 py-1 justify-self-start">⌘I</div>
+                    </div>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        // DOM Elements
+        const app = document.getElementById('app');
+        const sidebar = document.querySelector('aside');
+        const noteList = document.getElementById('note-list');
+        const newNoteBtn = document.getElementById('new-note-btn');
+        const noteEditor = document.getElementById('note-editor');
+        const noteTitle = document.getElementById('note-title');
+        const mainContent = document.getElementById('main-content');
+        const deleteNoteBtn = document.getElementById('delete-note-btn');
+        const searchBox = document.getElementById('search-box');
+        const slashMenu = document.getElementById('slash-menu');
+
+        // Gemini API Elements
+        const aiToolbar = document.getElementById('ai-toolbar');
+        const summarizeBtn = document.getElementById('summarize-btn');
+        const continueBtn = document.getElementById('continue-btn');
+        const brainstormBtn = document.getElementById('brainstorm-btn');
+        const aiLoader = document.getElementById('ai-loader');
+        const summaryModal = document.getElementById('summary-modal');
+        const summaryModalContent = document.getElementById('summary-modal-content');
+        const summaryText = document.getElementById('summary-text');
+        const closeSummaryBtn = document.getElementById('close-summary-btn');
+        const createFollowupBtn = document.getElementById('create-followup-btn');
+
+        // AI Search Elements
+        const aiSearchBtn = document.getElementById('ai-search-btn');
+        const aiSearchModal = document.getElementById('ai-search-modal');
+        const aiSearchModalContent = document.getElementById('ai-search-modal-content');
+        const aiSearchText = document.getElementById('ai-search-text');
+        const closeAiSearchBtn = document.getElementById('close-ai-search-btn');
+
+        // Delete Modal Elements
+        const deleteModal = document.getElementById('delete-modal');
+        const deleteModalContent = document.getElementById('delete-modal-content');
+        const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        
+        // Shortcuts Modal Elements
+        const shortcutsBtn = document.getElementById('shortcuts-btn');
+        const shortcutsModal = document.getElementById('shortcuts-modal');
+        const shortcutsModalContent = document.getElementById('shortcuts-modal-content');
+        const closeShortcutsBtn = document.getElementById('close-shortcuts-btn');
+        
+        // Follow-up Modal Elements
+        const followupModal = document.getElementById('followup-modal');
+        const followupModalContent = document.getElementById('followup-modal-content');
+        const followupText = document.getElementById('followup-text');
+        const closeFollowupBtn = document.getElementById('close-followup-btn');
+        const copyFollowupBtn = document.getElementById('copy-followup-btn');
+
+
+        // App State
+        let activeNoteId = null;
+        let notesCache = [];
+        let turndownService = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' });
+        let debounceTimeout;
+        
+        // --- UTILITY FUNCTIONS ---
+        const getNoteTitle = (content) => content.split('\n')[0].trim().replace(/^[#\s]*/, '') || 'New Note';
+        const getNotePreview = (content) => {
+            const lines = content.split('\n');
+            const preview = lines.slice(1).join(' ').trim();
+            return preview.substring(0, 100) + (preview.length > 100 ? '...' : '');
+        };
+
+        // --- RENDER FUNCTIONS ---
+        function renderNoteList() {
+            let notesToRender = [...notesCache];
+            const searchTerm = searchBox.value.toLowerCase();
+
+            // Filter notes if there's a search term
+            if (searchTerm) {
+                notesToRender = notesToRender.filter(note => note.content.toLowerCase().includes(searchTerm));
+            }
+
+            // Sort notes by most recently updated
+            notesToRender.sort((a, b) => b.updatedAt - a.updatedAt);
+            
+            if (notesToRender.length === 0) {
+                 noteList.innerHTML = `<p class="p-4 text-center text-slate-500">${searchTerm ? 'No matching notes found.' : 'No notes yet. Create one!'}</p>`;
+                 return;
+            }
+
+            noteList.innerHTML = notesToRender.map(note => `
+                <div data-note-id="${note.id}" class="p-4 rounded-lg cursor-pointer mb-2 ${note.id === activeNoteId ? 'bg-blue-100' : 'hover:bg-slate-100'}">
+                    <h3 class="font-normal text-slate-800 truncate">${getNoteTitle(note.content)}</h3>
+                    <p class="text-sm text-slate-500 truncate">${getNotePreview(note.content) || 'No additional content'}</p>
+                </div>
+            `).join('');
+        }
+
+        function renderEditor(force = false) {
+            const activeNote = notesCache.find(note => note.id === activeNoteId);
+            if (activeNote) {
+                mainContent.classList.remove('editor-hidden');
+                mainContent.classList.add('editor-visible');
+                
+                const markdownContent = activeNote.content;
+                noteTitle.textContent = getNoteTitle(markdownContent);
+                
+                const currentHTML = noteEditor.innerHTML;
+                const newHTML = marked.parse(markdownContent, { gfm: true, breaks: true });
+                const currentMarkdown = turndownService.turndown(currentHTML);
+                
+                if (force || currentMarkdown !== markdownContent) {
+                   noteEditor.innerHTML = newHTML;
+                }
+            } else {
+                mainContent.classList.add('editor-hidden');
+                mainContent.classList.remove('editor-visible');
+            }
+        }
+
+        // --- GEMINI API FUNCTIONS ---
+
+        function setAILoading(isLoading) {
+            if(isLoading) {
+                aiLoader.classList.remove('hidden');
+                summarizeBtn.disabled = true;
+                continueBtn.disabled = true;
+                brainstormBtn.disabled = true;
+                createFollowupBtn.disabled = true;
+                aiSearchBtn.disabled = true;
+            } else {
+                aiLoader.classList.add('hidden');
+                summarizeBtn.disabled = false;
+                continueBtn.disabled = false;
+                brainstormBtn.disabled = false;
+                createFollowupBtn.disabled = false;
+                aiSearchBtn.disabled = false;
+            }
+        }
+
+        async function callGeminiAPI(prompt, retries = 3, delay = 1000) {
+            setAILoading(true);
+            const apiKey = ""; // Provided by the environment
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+            };
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!text) throw new Error("Invalid response from API");
+                    return text;
+                } catch (error) {
+                    console.error(`API call failed (attempt ${i + 1}):`, error);
+                    if (i === retries - 1) {
+                        alert('Could not connect to the AI service. Please try again later.');
+                        return null;
+                    }
+                    await new Promise(res => setTimeout(res, delay * Math.pow(2, i))); // Exponential backoff
+                } finally {
+                    setAILoading(false);
+                }
+            }
+             return null;
+        }
+
+        async function handleSummarize() {
+            const currentContent = turndownService.turndown(noteEditor.innerHTML);
+            if (currentContent.trim().length < 50) {
+                alert("Please write more content before summarizing.");
+                return;
+            }
+            const prompt = `Act as an expert summarizer. Provide a concise, clear summary of the following note. Use bullet points for key takeaways if applicable:\n\n---\n\n${currentContent}`;
+            const summary = await callGeminiAPI(prompt);
+            if (summary) {
+                summaryText.innerHTML = marked.parse(summary);
+                summaryModal.classList.remove('hidden');
+                setTimeout(() => {
+                    summaryModal.classList.remove('opacity-0');
+                    summaryModalContent.classList.remove('scale-95');
+                }, 10);
+            }
+        }
+
+        async function handleContinueWriting() {
+            const currentContent = turndownService.turndown(noteEditor.innerHTML);
+            if (currentContent.trim().length === 0) {
+                alert("Please write something first so the AI knows what to continue.");
+                return;
+            }
+            const prompt = `Continue writing the following text naturally, picking up directly from the end. Do not repeat the original text. Maintain the tone and style:\n\n---\n\n${currentContent}`;
+            const continuation = await callGeminiAPI(prompt);
+            if (continuation) {
+                document.execCommand('insertHTML', false, marked.parse(continuation.trim()));
+            }
+        }
+
+        async function handleBrainstorm() {
+            const currentContent = turndownService.turndown(noteEditor.innerHTML);
+            if (currentContent.trim().length === 0) {
+                alert("Please write a topic or some initial thoughts to brainstorm from.");
+                return;
+            }
+            const prompt = `You are an expert idea generator. Brainstorm a list of related ideas, topics, or actionable next steps based on the following note. Format the response as a clean, bulleted list:\n\n---\n\n${currentContent}`;
+            const ideas = await callGeminiAPI(prompt);
+            if (ideas) {
+                document.execCommand('insertHTML', false, marked.parse(`\n\n<h2>Brainstormed Ideas</h2>\n\n${ideas.trim()}`));
+            }
+        }
+        
+        async function handleAiSearch() {
+            const query = searchBox.value;
+            if (query.trim().length === 0) {
+                alert("Please enter a question in the search box to use Smart Search.");
+                return;
+            }
+            if (notesCache.length === 0) {
+                alert("You don't have any notes to search through.");
+                return;
+            }
+
+            const context = notesCache.map(note => `--- NOTE: ${getNoteTitle(note.content)} ---\n${note.content}`).join('\n\n');
+            const prompt = `You are a helpful AI assistant integrated into a notes app. A user is asking a question. Answer the user's question based *only* on the provided notes content. If the answer cannot be found in the notes, say "I could not find an answer to that in your notes." Do not use any external knowledge.\n\nUSER'S QUESTION:\n"${query}"\n\nNOTES CONTENT:\n${context}`;
+            
+            const result = await callGeminiAPI(prompt);
+
+            if (result) {
+                aiSearchText.innerHTML = marked.parse(result);
+                aiSearchModal.classList.remove('hidden');
+                setTimeout(() => {
+                    aiSearchModal.classList.remove('opacity-0');
+                    aiSearchModalContent.classList.remove('scale-95');
+                }, 10);
+            }
+        }
+
+        async function handleCreateFollowup() {
+            const selection = window.getSelection().toString().trim();
+            const context = selection || turndownService.turndown(noteEditor.innerHTML);
+
+            if (context.trim().length < 20) {
+                alert("Please select more text or add more content to the note to create a follow-up.");
+                return;
+            }
+
+            const prompt = `You are a professional project manager. Based on the following meeting notes/selection, draft a concise and clear follow-up email to the team. Structure it professionally with a subject line, a brief intro, a summary of key decisions and action items (using bullet points), and a closing. Infer a suitable subject line.\n\n---\n\nNOTES:\n${context}`;
+            const draft = await callGeminiAPI(prompt);
+
+            if (draft) {
+                followupText.textContent = draft;
+                followupModal.classList.remove('hidden');
+                setTimeout(() => {
+                    followupModal.classList.remove('opacity-0');
+                    followupModalContent.classList.remove('scale-95');
+                }, 10);
+            }
+        }
+
+
+        function closeSummaryModal() {
+            summaryModal.classList.add('opacity-0');
+            summaryModalContent.classList.add('scale-95');
+            setTimeout(() => summaryModal.classList.add('hidden'), 300);
+        }
+
+        function closeAiSearchModal() {
+            aiSearchModal.classList.add('opacity-0');
+            aiSearchModalContent.classList.add('scale-95');
+            setTimeout(() => aiSearchModal.classList.add('hidden'), 300);
+        }
+
+
+        function showDeleteModal() {
+            deleteModal.classList.remove('hidden');
+            setTimeout(() => {
+                deleteModal.classList.remove('opacity-0');
+                deleteModalContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeDeleteModal() {
+            deleteModal.classList.add('opacity-0');
+            deleteModalContent.classList.add('scale-95');
+            setTimeout(() => deleteModal.classList.add('hidden'), 300);
+        }
+
+        function closeFollowupModal() {
+            followupModal.classList.add('opacity-0');
+            followupModalContent.classList.add('scale-95');
+            const copyBtn = document.getElementById('copy-followup-btn');
+            copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span>Copy to Clipboard</span>`;
+            setTimeout(() => followupModal.classList.add('hidden'), 300);
+        }
+
+        function showShortcutsModal() {
+            shortcutsModal.classList.remove('hidden');
+            setTimeout(() => {
+                shortcutsModal.classList.remove('opacity-0');
+                shortcutsModalContent.classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeShortcutsModal() {
+            shortcutsModal.classList.add('opacity-0');
+            shortcutsModalContent.classList.add('scale-95');
+            setTimeout(() => shortcutsModal.classList.add('hidden'), 300);
+        }
+
+
+        // --- LOCAL STORAGE DATA HANDLING ---
+        function createDummyNotes() {
+            const dummyNotes = [
+                { title: "# Meeting Notes - Project Phoenix", content: "Discussed Q4 roadmap. Key takeaways:\n- Finalize UI/UX mockups by next Friday.\n- John to handle backend integration.\n- **Marketing push** scheduled for Nov 15th." },
+                { title: "## Grocery List", content: "- [x] Milk\n- [x] Eggs\n- [ ] Bread\n- [ ] Chicken breast\n- [ ] Avocado" },
+                { title: "### Brainstorming for new app", content: "*Idea 1:* A social network for gardeners.\n*Idea 2:* A hyper-local weather app.\n*Idea 3:* An AI-powered recipe generator based on ingredients you have." },
+                { title: "Recipe: Simple Pasta Dough", content: "#### Ingredients:\n- 2 cups all-purpose flour\n- 3 large eggs\n- 1 tsp olive oil\n- Pinch of salt\n\n#### Instructions:\n1. Mix flour and salt.\n2. Make a well, crack eggs in.\n3. Knead for 10 minutes until smooth." },
+                { title: "Book Recommendations", content: "To Read:\n1. 'Project Hail Mary' by Andy Weir\n2. 'Klara and the Sun' by Kazuo Ishiguro\n3. 'Dune' by Frank Herbert (re-read)" },
+                { title: "Vacation Ideas 2026", content: "Possible destinations:\n- Japan (Tokyo, Kyoto)\n- Italy (Amalfi Coast)\n- New Zealand (South Island road trip)" },
+                { title: "Learning Goals Q4", content: "- Master advanced `CSS Grid`\n- Learn basics of **Python** for data analysis\n- Complete the React Native course" },
+                { title: "Workout Plan - Week 43", content: "**Monday:** Chest & Triceps\n**Wednesday:** Back & Biceps\n**Friday:** Legs & Shoulders\n\n> Focus on progressive overload." },
+                { title: "Favorite Quotes", content: "> 'The only way to do great work is to love what you do.' - Steve Jobs\n\n> 'Strive not to be a success, but rather to be of value.' - Albert Einstein" },
+                { title: "Home Improvement To-Do", content: "- [ ] Fix leaky faucet in kitchen\n- [ ] Repaint the guest bedroom (light grey)\n- [x] Organize the garage" },
+                { title: "Gift Ideas for Sarah", content: "- A nice fountain pen\n- That book on architecture she wanted\n- Subscription to a coffee delivery service" },
+                { title: "Draft for email to client", content: "Subject: Update on Project Phoenix\n\nHi team,\nJust a quick update on our progress this week..." },
+                { title: "Car Maintenance Log", content: "Oct 15, 2025: Oil change and tire rotation.\nMileage: 45,210 km." },
+                { title: "Interesting Articles", content: "- The psychology of color in marketing\n- How to build a second brain\n- The rise of generative AI" },
+                { title: "Sourdough Bread Recipe for 3 People", content: "Ingredients for one loaf (feeds 3-4):\n- 75g active sourdough starter\n- 250g bread flour\n- 50g whole wheat flour\n- 225g water\n- 6g salt" },
+                { title: "Notes on 'Atomic Habits'", content: "Key concept: **1% better every day**. The four laws of behavior change: Make it obvious, attractive, easy, and satisfying." },
+                { title: "Concert Wishlist", content: "- The National\n- Tame Impala\n- Bon Iver" },
+                { title: "Appliance Manual Notes", content: "Dishwasher model: `DWX800`\nFilter cleaning: Monthly, counter-clockwise turn.\nRinse aid: Use setting 4." },
+                { title: "Gardening Log", content: "Planted tomatoes and basil on Oct 10. Water every 2 days. Seeing good growth. Watch for pests." },
+                { title: "Javascript Snippets", content: "Debounce function:\n```javascript\nconst debounce = (fn, delay) => { ... }\n```\nUseful for search inputs and resize events." },
+                { title: "Movie Watchlist", content: "- Oppenheimer\n- Past Lives\n- Anatomy of a Fall\n- The Holdovers" },
+                { title: "Podcast Ideas", content: "## Episode 1: The history of note-taking.\n## Episode 2: Analog vs. Digital productivity systems.\n## Episode 3: Interview with a memory champion." },
+                { title: "Client Contact Info", content: "John Doe - Acme Corp\nPhone: 555-1234\nEmail: john.doe@acme.com" },
+                { title: "Emergency Contacts", content: "Jane Doe (Spouse): 555-5678\nLocal Police: 000" },
+                { title: "Packing List for Camping", content: "- [ ] Tent\n- [ ] Sleeping bag\n- [ ] Headlamp\n- [ ] Stove & fuel\n- [x] Water filter\n- [x] First-aid kit" }
+            ];
+
+            const now = Date.now();
+            return dummyNotes.map((note, index) => ({
+                id: crypto.randomUUID(),
+                content: `${note.content}`, // Changed to not duplicate title
+                createdAt: now - (index * 1000 * 60 * 60 * 24), // Stagger creation dates
+                updatedAt: now - (index * 1000 * 60 * 5) // Stagger update times
+            }));
+        }
+
+        function loadNotes() {
+            const notesJSON = localStorage.getItem('notes-app-data');
+            let notes = notesJSON ? JSON.parse(notesJSON) : [];
+
+            if (notes.length === 0) {
+                notes = createDummyNotes();
+                localStorage.setItem('notes-app-data', JSON.stringify(notes));
+            }
+
+            notesCache = notes;
+            
+            renderNoteList();
+            if (notesCache.length > 0) {
+                const lastActiveId = localStorage.getItem('notes-app-last-active');
+                const noteToSelect = notesCache.find(n => n.id === lastActiveId) || notesCache[0];
+                if (noteToSelect) setActiveNote(noteToSelect.id);
+            }
+        }
+
+        function saveNotes() {
+            localStorage.setItem('notes-app-data', JSON.stringify(notesCache));
+        }
+
+        function handleNewNote() {
+            const now = Date.now();
+            const newNote = {
+                id: crypto.randomUUID(),
+                content: "# New Note\n",
+                createdAt: now,
+                updatedAt: now,
+            };
+            notesCache.push(newNote);
+            saveNotes();
+            setActiveNote(newNote.id);
+            searchBox.value = '';
+            renderNoteList();
+        }
+        
+        const debouncedSave = (id, content) => {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(() => {
+                const note = notesCache.find(n => n.id === id);
+                if (note) {
+                    note.content = content;
+                    note.updatedAt = Date.now();
+                    saveNotes();
+                }
+            }, 500);
+        };
+
+        function handleDeleteNote() {
+            if (!activeNoteId) return;
+            
+            const noteIndex = notesCache.findIndex(n => n.id === activeNoteId);
+            notesCache.splice(noteIndex, 1);
+            saveNotes();
+            
+            closeDeleteModal();
+            
+            if (notesCache.length > 0) {
+                 const nextNoteIndex = Math.max(0, noteIndex - 1);
+                 setActiveNote(notesCache[nextNoteIndex].id);
+            } else {
+                 setActiveNote(null);
+                 noteEditor.innerHTML = '';
+            }
+            renderNoteList();
+        }
+
+        // --- EVENT HANDLERS & INITIALIZATION ---
+        
+        function setActiveNote(id) {
+            if (activeNoteId === id) return;
+            activeNoteId = id;
+            localStorage.setItem('notes-app-last-active', id);
+            renderNoteList();
+            renderEditor();
+            noteEditor.focus();
+        }
+        
+        function setupEventListeners() {
+            newNoteBtn.addEventListener('click', handleNewNote);
+            deleteNoteBtn.addEventListener('click', showDeleteModal);
+            searchBox.addEventListener('input', renderNoteList);
+            noteEditor.addEventListener('keydown', handleEditorKeys);
+            noteEditor.addEventListener('input', handleEditorInput);
+
+            noteList.addEventListener('click', (e) => {
+                const noteElement = e.target.closest('[data-note-id]');
+                if (noteElement) setActiveNote(noteElement.dataset.noteId);
+            });
+
+            // AI and Modal Listeners
+            summarizeBtn.addEventListener('click', handleSummarize);
+            continueBtn.addEventListener('click', handleContinueWriting);
+            brainstormBtn.addEventListener('click', handleBrainstorm);
+            createFollowupBtn.addEventListener('click', handleCreateFollowup);
+            closeSummaryBtn.addEventListener('click', closeSummaryModal);
+            summaryModal.addEventListener('click', (e) => e.target === summaryModal && closeSummaryModal());
+
+            // AI Search Listeners
+            aiSearchBtn.addEventListener('click', handleAiSearch);
+            closeAiSearchBtn.addEventListener('click', closeAiSearchModal);
+            aiSearchModal.addEventListener('click', (e) => e.target === aiSearchModal && closeAiSearchModal());
+
+            // Delete Modal Listeners
+            confirmDeleteBtn.addEventListener('click', handleDeleteNote);
+            cancelDeleteBtn.addEventListener('click', closeDeleteModal);
+            deleteModal.addEventListener('click', (e) => e.target === deleteModal && closeDeleteModal());
+        }
+
+        // --- SLASH COMMANDS ---
+        
+        const commands = [
+            { cmd: 'h1', name: 'Heading 1', action: () => document.execCommand('formatBlock', false, '<h1>') },
+            { cmd: 'h2', name: 'Heading 2', action: () => document.execCommand('formatBlock', false, '<h2>') },
+            { cmd: 'h3', name: 'Heading 3', action: () => document.execCommand('formatBlock', false, '<h3>') },
+            { cmd: 'ul', name: 'Bulleted List', action: () => document.execCommand('insertUnorderedList') },
+            { cmd: 'ol', name: 'Numbered List', action: () => document.execCommand('insertOrderedList') },
+            { cmd: 'todo', name: 'Checklist', action: () => {
+                document.execCommand('insertUnorderedList');
+                const selection = window.getSelection();
+                if (!selection.rangeCount) return;
+                let node = selection.anchorNode;
+                let listItem = null;
+                while (node && node.nodeName !== 'BODY') {
+                    if (node.nodeName === 'LI') { listItem = node; break; }
+                    node = node.parentNode;
+                }
+                if (listItem && !listItem.querySelector('input[type="checkbox"]')) {
+                    listItem.classList.add('task-list-item');
+                    listItem.innerHTML = `<input type="checkbox"> ${listItem.innerHTML}`;
+                    // Restore cursor position might be needed here if complex
+                }
+            } },
+        ];
+        
+        let slashMenuActive = false;
+        let slashMenuFilter = '';
+        let slashCommandNode = null;
+
+        function updateSlashMenu() {
+            const filteredCommands = commands.filter(c => c.cmd.startsWith(slashMenuFilter) || c.name.toLowerCase().includes(slashMenuFilter));
+            if (filteredCommands.length === 0) {
+                hideSlashMenu();
+                return;
+            }
+
+            slashMenu.innerHTML = filteredCommands.map((cmd, index) => `
+                <div class="p-2 cursor-pointer hover:bg-slate-100 ${index === 0 ? 'bg-slate-100' : ''}" data-cmd="${cmd.cmd}">
+                    <p class="font-normal text-slate-800">${cmd.name}</p>
+                </div>
+            `).join('');
+
+            const firstItem = slashMenu.querySelector('[data-cmd]');
+            if(firstItem) firstItem.classList.add('bg-slate-100');
+        }
+
+        function showSlashMenu() {
+            const selection = window.getSelection();
+            if(!selection.rangeCount) return;
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            
+            // Use the correct relative parent for coordinate calculations
+            const editorContainer = document.getElementById('editor-container');
+            const editorContainerRect = editorContainer.getBoundingClientRect();
+
+            // Make the menu visible but transparent to measure its dimensions
+            slashMenu.classList.remove('hidden');
+            updateSlashMenu(); // Populate menu to get correct height
+
+            const menuRect = slashMenu.getBoundingClientRect();
+
+            // Position horizontally, relative to the editor container
+            slashMenu.style.left = `${rect.left - editorContainerRect.left}px`;
+
+            // Position vertically: check if it fits below the cursor, otherwise place it above
+            if (rect.bottom + menuRect.height > window.innerHeight) {
+                // Place above cursor
+                slashMenu.style.top = `${rect.top - editorContainerRect.top - menuRect.height}px`;
+            } else {
+                // Place below cursor
+                slashMenu.style.top = `${rect.bottom - editorContainerRect.top}px`;
+            }
+            
+            setTimeout(() => slashMenu.classList.remove('opacity-0'), 10);
+            slashMenuActive = true;
+            slashMenuFilter = '';
+            slashCommandNode = selection.anchorNode.parentNode;
+        }
+        
+        function hideSlashMenu() {
+             slashMenu.classList.add('opacity-0');
+             setTimeout(() => slashMenu.classList.add('hidden'), 100);
+             slashMenuActive = false;
+             slashCommandNode = null;
+        }
+        
+        function executeSlashCommand(cmdName) {
+            const command = commands.find(c => c.cmd === cmdName);
+            if (command && slashCommandNode) {
+                 // Clear the "/cmd" text
+                const range = document.createRange();
+                range.selectNodeContents(slashCommandNode);
+                slashCommandNode.textContent = '';
+                
+                command.action();
+            }
+            hideSlashMenu();
+        }
+
+        function handleEditorInput() {
+            if (slashMenuActive) {
+                const text = slashCommandNode.textContent;
+                if(text.startsWith('/')) {
+                    slashMenuFilter = text.substring(1).toLowerCase();
+                    updateSlashMenu();
+                } else {
+                    hideSlashMenu();
+                }
+            }
+
+            const htmlContent = noteEditor.innerHTML;
+            const markdownContent = turndownService.turndown(htmlContent);
+
+            if (activeNoteId) {
+                const title = getNoteTitle(markdownContent);
+                noteTitle.textContent = title;
+                const noteInList = noteList.querySelector(`[data-note-id="${activeNoteId}"]`);
+                if(noteInList) {
+                    noteInList.querySelector('h3').textContent = title;
+                    noteInList.querySelector('p').textContent = getNotePreview(markdownContent) || 'No additional content';
+                }
+                debouncedSave(activeNoteId, markdownContent);
+            }
+        }
+        
+        function handleEditorKeys(e) {
+            const isModifier = e.metaKey || e.ctrlKey;
+            
+            if (slashMenuActive) {
+                if(e.key === 'Enter') {
+                    e.preventDefault();
+                    const selectedCmd = slashMenu.querySelector('.bg-slate-100')?.dataset.cmd;
+                    if(selectedCmd) executeSlashCommand(selectedCmd);
+                } else if (e.key === 'Escape' || e.key === ' ') {
+                    hideSlashMenu();
+                }
+                return;
+            }
+
+            if (e.key === '/') {
+                const selection = window.getSelection();
+                if(selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const node = range.startContainer;
+                    // Only trigger if the line is empty or just has a '/'
+                    if (node.textContent.trim() === '' || node.textContent.trim() === '/') {
+                         setTimeout(showSlashMenu, 0); // Use timeout to let '/' appear
+                    }
+                }
+            } else if (isModifier && (e.key === 'b' || e.key === 'i')) {
+                e.preventDefault();
+                document.execCommand(e.key === 'b' ? 'bold' : 'italic');
+            }
+        }
+        
+        function handleGlobalShortcuts(e) {
+            const isModifier = e.metaKey || e.ctrlKey;
+            if (isModifier) {
+                switch(e.key) {
+                    case 'k': e.preventDefault(); searchBox.focus(); break;
+                    case '\\': e.preventDefault(); sidebar.classList.toggle('hidden'); break;
+                    case '/': e.preventDefault(); showShortcutsModal(); break;
+                }
+            }
+            if(isModifier && e.altKey && e.key === 'n') {
+                e.preventDefault();
+                handleNewNote();
+            }
+        }
+
+
+        // --- APP INITIALIZATION ---
+        function init() {
+            turndownService.addRule('taskListItem', {
+                filter: function (node) {
+                    return node.nodeName === 'LI' && node.classList.contains('task-list-item');
+                },
+                replacement: function (content, node) {
+                    const checkbox = node.querySelector('input[type="checkbox"]');
+                    const checked = checkbox && checkbox.checked ? 'x' : ' ';
+                    return `- [${checked}] ${content.replace(/^\s+/, '')}`;
+                }
+            });
+
+            document.addEventListener('keydown', handleGlobalShortcuts);
+            shortcutsBtn.addEventListener('click', showShortcutsModal);
+            closeShortcutsBtn.addEventListener('click', closeShortcutsModal);
+            shortcutsModal.addEventListener('click', (e) => e.target === shortcutsModal && closeShortcutsModal());
+            
+            slashMenu.addEventListener('click', (e) => {
+                const cmdItem = e.target.closest('[data-cmd]');
+                if(cmdItem) executeSlashCommand(cmdItem.dataset.cmd);
+            });
+
+            closeFollowupBtn.addEventListener('click', closeFollowupModal);
+            followupModal.addEventListener('click', (e) => e.target === e.currentTarget && closeFollowupModal());
+            copyFollowupBtn.addEventListener('click', () => {
+                const textToCopy = followupText.textContent;
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const copyBtn = document.getElementById('copy-followup-btn');
+                    copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"/></svg><span>Copied!</span>`;
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Failed to copy text.');
+                });
+            });
+
+
+            setupEventListeners();
+            loadNotes();
+        }
+        
+        init();
+
+    </script>
+</body>
+</html>
+
